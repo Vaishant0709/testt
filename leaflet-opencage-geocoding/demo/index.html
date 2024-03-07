@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Leaflet Control Geocoder</title>
+  <link rel="shortcut icon" href="https://opencagedata.com/favicon.ico" type="image/x-icon">
+
+  <meta name='viewport' content='width=device-width, user-scalable=no initial-scale=1, maximum-scale=1'>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="../dist/css/L.Control.OpenCageGeocoding.dev.css" />
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="../dist/js/L.Control.OpenCageGeocoding.dev.js"></script>
+  
+
+  <style type="text/css">
+    body {
+      margin: 0;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map">
+    <div class="leaflet-control coordinate"></div>
+  </div>
+
+  <script src="../dist/js/line.js"></script>
+  <script src="../dist/js/point.js"></script>
+  <script src="../dist/js/polygon.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+  <script src="../dist/js/leaflet-measure.js"></script>
+
+
+  <script type="text/javascript">
+
+    var map = L.map('map',{measureControl:true}).setView([51.52255, -0.10249], 13);
+    let marker, circle, zoomed;
+
+    navigator.geolocation.watchPosition(success, error);
+
+    //TYPES OF MAPS
+    function def() {
+      goo = L.tileLayer('http://{s}.google.com/vt?lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+      });
+      goo.addTo(map);
+
+    }
+    function hybd() {
+      gooH = L.tileLayer('http://{s}.google.com/vt?lyrs=s,h&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+      });
+      gooH.addTo(map);
+
+    }
+    function sat() {
+      gooS = L.tileLayer('http://{s}.google.com/vt?lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+      });
+      gooS.addTo(map);
+
+    }
+
+    function ter() {
+      gooTe = L.tileLayer('http://{s}.google.com/vt?lyrs=p&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+      });
+      gooTe.addTo(map);
+    }
+
+    var spots = [];
+
+    var latg;
+    var lngg;
+
+    //IF CURRENT LOC IS GOTTEN
+    function success(pos) {
+
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
+
+      if (marker) {
+        map.removeLayer(marker);
+        map.removeLayer(circle);
+      }
+      // Removes any existing marker and circule (new ones about to be set)
+
+      marker = L.marker([lat, lng]).addTo(map)
+      spots.push(marker);
+
+      circle = L.circle([lat, lng], { radius: accuracy }).addTo(map);
+      // Adds marker to the map and a circle for accuracy
+
+      if (!zoomed) {
+        zoomed = map.fitBounds(circle.getBounds());
+      }
+      // Set zoom to boundaries of accuracy circle
+
+      map.setView([lat, lng]);
+
+      var api_key = '94b30cd800f54ca99eac1ee2689e1a89';
+
+      // reverse geocoding example (coordinates to address)
+      var latitude = lat;
+      var longitude = lng;
+      var query = latitude + ',' + longitude;
+      
+
+      // forward geocoding example (address to coordinate)
+      // var query = 'Philipsbornstr. 2, 30165 Hannover, Germany';
+      // note: query needs to be URI encoded (see below)
+
+      var api_url = 'https://api.opencagedata.com/geocode/v1/json'
+
+      var request_url = api_url
+        + '?'
+        + 'key=' + api_key
+        + '&q=' + encodeURIComponent(query)
+        + '&pretty=1'
+        + '&no_annotations=1';
+
+      // see full list of required and optional parameters:
+      // https://opencagedata.com/api#required-params
+
+      var request = new XMLHttpRequest();
+      request.open('GET', request_url, true);
+
+      request.onload = function () {
+        // see full list of possible response codes:
+        // https://opencagedata.com/api#codes
+        if (request.status === 200) {
+          // Success!
+          var data = JSON.parse(request.responseText);
+          marker.bindPopup(data.results[0].formatted);
+          marker.openPopup();
+
+        } else if (request.status <= 500) {
+          // We reached our target server, but it returned an error
+
+          console.log("unable to geocode! Response code: " + request.status);
+          var data = JSON.parse(request.responseText);
+          console.log('error msg: ' + data.status.message);
+        } else {
+          console.log("server error");
+        }
+        const show = JSON.stringify(data);
+        console.log(show.results);
+
+
+      };
+
+      request.onerror = function () {
+        // There was a connection error of some sort
+        console.log("unable to connect to server");
+      };
+
+      request.send();  // make the request
+
+
+      map.on('click',function(e){
+        
+      var secondMarker=L.marker([e.latlng.lat,e.latlng.lng]).addTo(map);
+      spots.push(secondMarker);
+
+      console.log("AAHHHHH");
+
+      console.log(lat,lng);
+      console.log(e.latlng.lat,e.latlng.lng);
+      
+
+      L.Routing.control({
+    waypoints: [
+      L.latLng(lat,lng),
+      L.latLng(e.latlng.lat, e.latlng.lng)
+    ]
+    })
+    .addTo(map);
+  })
+
+
+
+    }
+
+    function error(err) {
+      switch (err.code) {
+        case err.PERMISSION_DENIED:
+          x.innerHTML = "User denied the request for Geolocation."
+          break;
+        case err.POSITION_UNAVAILABLE:
+          x.innerHTML = "Location information is unavailable."
+          break;
+        case err.TIMEOUT:
+          x.innerHTML = "The request to get user location timed out."
+          break;
+        case err.UNKNOWN_ERROR:
+          x.innerHTML = "An unknown error occurred."
+          break;
+      }
+      let lat = position.coords.latitude;
+      let lon = position.coords.longitude;
+    }
+    var options = {
+      key: '3c38d15e76c02545181b07d3f8cfccf0', 
+      limit: 10
+    };
+
+    var geocoder = L.Control.OpenCageGeocoding.geocoder(options);
+    var control = L.Control.openCageGeocoding(options).addTo(map);
+    var marker1;
+
+
+    // /*L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    //   attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+    // }).addTo(map);*/
+
+    L.tileLayer('https://{s}.tile.thunderforest.com/atlas/{z}/{x}/{y}{r}.png?apikey=224e9cefe709416d953c7c9177ef3ff7', {
+      attribution: 'Data <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, Map tiles &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>',
+      minZoom: 4,
+      maxZoom: 18
+    }).addTo(map);
+
+    // map.on('click', function (e) {
+    //   var query = e.latlng.lat.toString() + ',' + e.latlng.lng.toString();
+    //   geocoder.geocode(query, function (results) {
+    //     var r = results[0];
+    //     if (r) {
+    //       if (marker1) {
+    //         marker1.setLatLng(r.center).setPopupContent(r.name).openPopup();
+    //       } else {
+    //         marker1 = L.marker(r.center).bindPopup(r.name).addTo(map).openPopup();
+    //       }
+    //       spots.push(marker1);
+    //     }
+    //   })
+    // })
+
+
+  
+//     console.log(latg,lngg);
+
+    
+
+
+    var baseMaps = {
+    };
+
+    var overlaymap = {
+      'Markers': spots
+    };
+    console.log("HAAA");
+    console.log(spots);
+    L.control.layers(baseMaps, overlaymap, { collapsed: false }).addTo(map);
+
+    
+
+    // map.on('mousemove', function (e) {
+    //   document.getElementsByClassName('coordinate')[0].innerHTML = 'Lat:' + e.latlng.lat, 'Lng:' + e.latlng.lng;
+    //   console.log('Lat:' + e.latlng.lat, 'Lng:' + e.latlng.lng);
+    // })
+
+    // L.Routing.control({
+    //   waypoints: [
+    //     L.latLng(57.74, 11.94),
+    //     L.latLng(57.6792, 11.949)
+    //   ]
+    // }).addTo(map);
+
+
+
+
+  </script>
+</body>
+
+</html>
